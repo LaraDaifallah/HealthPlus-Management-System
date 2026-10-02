@@ -1,0 +1,42 @@
+name: Build desktop demo
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'pom.xml', 'database/**', 'launchers/**', 'scripts/**', '.github/workflows/build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: Windows
+          - os: ubuntu-latest
+            platform: Linux
+          - os: macos-15-intel
+            platform: macOS-Intel
+          - os: macos-latest
+            platform: macOS-AppleSilicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Compile and collect runtime libraries
+        run: mvn --batch-mode --no-transfer-progress clean package
+      - name: Create desktop package
+        run: python scripts/package-demo.py "${{ matrix.platform }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HealthPlus-${{ matrix.platform }}
+          path: target/HealthPlus-*.zip
+          retention-days: 30
